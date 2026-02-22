@@ -1,7 +1,7 @@
 # schemas.py
+import models # Importamos para usar o Enum de status
 from uuid import UUID
 from datetime import datetime
-import models # Importamos para usar o Enum de status
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Dict, Any
 
@@ -40,6 +40,7 @@ class LeadUpdateStatus(BaseModel):
 class InteracaoCreate(BaseModel):
     tipo: str = Field(..., example="email", description="Tipo de interação (nota, email, ligacao)")
     conteudo: str = Field(..., example="Enviei a proposta comercial atualizada.")
+    novo_status: models.StatusLead = Field(..., description="Obrigatório confirmar ou alterar o status do lead na interação")
 
 # O que a API vai devolver para o Frontend mostrar no histórico
 class InteracaoResponse(BaseModel):

@@ -95,21 +95,25 @@ def buscar_lead_detalhes(lead_id: str, db: Session = Depends(get_db)):
 @app.post("/leads/{lead_id}/interacoes", response_model=schemas.InteracaoResponse, status_code=201)
 def adicionar_interacao(lead_id: str, interacao_in: schemas.InteracaoCreate, db: Session = Depends(get_db)):
     """
-    Adiciona uma nova anotação ou registro de e-mail ao histórico do Lead.
+    Adiciona uma nova interação e ATUALIZA O STATUS do Lead obrigatoriamente.
     """
-    # Verifica se o lead existe
+    # 1. Busca o lead
     lead_db = db.query(models.Lead).filter(models.Lead.id == lead_id).first()
     if not lead_db:
         raise HTTPException(status_code=404, detail="Lead não encontrado.")
 
-    # Cria a nova interação apontando para o ID do Lead
+    # 2. Cria a nova interação
     nova_interacao = models.Interacao(
         lead_id=lead_db.id,
         tipo=interacao_in.tipo,
         conteudo=interacao_in.conteudo
     )
-
     db.add(nova_interacao)
+
+    # 3. REGRA DE NEGÓCIO: Atualiza o status do Lead com o valor recebido
+    lead_db.status = interacao_in.novo_status
+
+    # 4. Salva TUDO em uma única transação no banco (se falhar um, falha tudo - garante integridade)
     db.commit()
     db.refresh(nova_interacao)
 
