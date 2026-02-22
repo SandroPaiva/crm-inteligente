@@ -1,5 +1,6 @@
 # main.py
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware # <-- IMPORTANTE: Adicione esta linha
 from sqlalchemy.orm import Session
 from database import engine, Base, get_db
 import models
@@ -8,6 +9,17 @@ import schemas
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="CRM Inteligente API", version="0.1.0")
+
+# --- CONFIGURAÇÃO DO CORS ---
+# Permite que o frontend React (que rodará na porta 5173) converse com esta API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"], # URL do nosso Frontend Vite
+    allow_credentials=True,
+    allow_methods=["*"], # Permite todos os verbos (GET, POST, PATCH, etc)
+    allow_headers=["*"], # Permite todos os cabeçalhos
+)
+# ----------------------------
 
 @app.post("/webhook/leads/", response_model=dict, status_code=201)
 def receber_lead_webhook(lead_in: schemas.LeadCreateWebhook, db: Session = Depends(get_db)):
