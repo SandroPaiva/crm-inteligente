@@ -80,3 +80,37 @@ def atualizar_status_lead(lead_id: str, lead_update: schemas.LeadUpdateStatus, d
     db.refresh(lead_db)
 
     return lead_db
+  
+@app.get("/leads/{lead_id}", response_model=schemas.LeadComHistoricoResponse)
+def buscar_lead_detalhes(lead_id: str, db: Session = Depends(get_db)):
+    """
+    Busca um lead específico e traz todo o histórico de interações dele.
+    """
+    lead_db = db.query(models.Lead).filter(models.Lead.id == lead_id).first()
+    if not lead_db:
+        raise HTTPException(status_code=404, detail="Lead não encontrado.")
+    return lead_db
+
+
+@app.post("/leads/{lead_id}/interacoes", response_model=schemas.InteracaoResponse, status_code=201)
+def adicionar_interacao(lead_id: str, interacao_in: schemas.InteracaoCreate, db: Session = Depends(get_db)):
+    """
+    Adiciona uma nova anotação ou registro de e-mail ao histórico do Lead.
+    """
+    # Verifica se o lead existe
+    lead_db = db.query(models.Lead).filter(models.Lead.id == lead_id).first()
+    if not lead_db:
+        raise HTTPException(status_code=404, detail="Lead não encontrado.")
+
+    # Cria a nova interação apontando para o ID do Lead
+    nova_interacao = models.Interacao(
+        lead_id=lead_db.id,
+        tipo=interacao_in.tipo,
+        conteudo=interacao_in.conteudo
+    )
+
+    db.add(nova_interacao)
+    db.commit()
+    db.refresh(nova_interacao)
+
+    return nova_interacao

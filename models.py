@@ -1,7 +1,8 @@
 import uuid
 # 1. Adicionamos o 'timezone' na importação
 from datetime import datetime, timezone 
-from sqlalchemy import Column, String, Boolean, DateTime, Enum, Text
+from sqlalchemy import Column, String, Boolean, DateTime, Enum, Text, ForeignKey
+from sqlalchemy.orm import relationship # <-- Importante!
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from database import Base
 import enum
@@ -12,6 +13,7 @@ class StatusLead(str, enum.Enum):
     proposta = "proposta"
     ganho = "ganho"
     perdido = "perdido"
+    
 
 # 2. Criamos uma função auxiliar para gerar a data/hora atual em UTC
 def get_utc_now():
@@ -46,3 +48,25 @@ class Lead(Base):
     # 3. Atualizamos as colunas usando a nova função e timezone=True
     criado_em = Column(DateTime(timezone=True), default=get_utc_now)
     atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
+    
+    # Isso diz ao SQLAlchemy que um Lead tem uma lista de "interacoes"
+    interacoes = relationship("Interacao", back_populates="lead", cascade="all, delete-orphan")
+    
+class Interacao(Base):
+    __tablename__ = "interacoes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    
+    # A "Chave Estrangeira" que liga esta anotação ao Lead correto
+    lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.id"), nullable=False)
+    
+    # Pode ser: 'nota', 'email_enviado', 'ligacao'
+    tipo = Column(String(50), nullable=False) 
+    
+    # O texto do e-mail ou da nota
+    conteudo = Column(Text, nullable=False) 
+    
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+
+    # Diz ao SQLAlchemy a quem essa interação pertence
+    lead = relationship("Lead", back_populates="interacoes")

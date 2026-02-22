@@ -35,3 +35,22 @@ class LeadResponse(BaseModel):
         # Schema para ATUALIZAR O STATUS (Quando arrastar no Kanban)
 class LeadUpdateStatus(BaseModel):
     status: models.StatusLead = Field(..., description="Novo status do lead no funil")
+    
+# O que o Frontend vai enviar para criar uma anotação/e-mail
+class InteracaoCreate(BaseModel):
+    tipo: str = Field(..., example="email", description="Tipo de interação (nota, email, ligacao)")
+    conteudo: str = Field(..., example="Enviei a proposta comercial atualizada.")
+
+# O que a API vai devolver para o Frontend mostrar no histórico
+class InteracaoResponse(BaseModel):
+    id: UUID
+    tipo: str
+    conteudo: str
+    criado_em: datetime
+
+    class Config:
+        from_attributes = True
+
+# Opcional, mas muito útil: Atualizar o LeadResponse para incluir o histórico
+class LeadComHistoricoResponse(LeadResponse):
+    interacoes: list[InteracaoResponse] = []
