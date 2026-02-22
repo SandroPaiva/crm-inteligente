@@ -1,5 +1,4 @@
 // frontend/src/components/KanbanBoard.tsx
-import { useEffect, useState } from "react";
 import {
   DragDropContext,
   Droppable,
@@ -8,7 +7,6 @@ import {
 } from "@hello-pangea/dnd";
 import api from "../services/api";
 
-// Definimos o formato do nosso Lead
 interface Lead {
   id: string;
   nome: string;
@@ -16,7 +14,12 @@ interface Lead {
   status: string;
 }
 
-// Definimos as colunas e os seus títulos (as chaves devem corresponder ao Enum do backend)
+// Agora o Kanban recebe os leads e a função de atualizar via Props
+interface KanbanBoardProps {
+  leads: Lead[];
+  onUpdateStatus: (id: string, novoStatus: string) => void;
+}
+
 const COLUNAS = {
   novo: "Novo Lead",
   em_atendimento: "Em Atendimento",
@@ -25,22 +28,14 @@ const COLUNAS = {
   perdido: "Perdido",
 };
 
-export default function KanbanBoard() {
-  const [leads, setLeads] = useState<Lead[]>([]);
-
-  // 1. Buscar os leads na API ao carregar o componente
-  useEffect(() => {
-    api.get("/leads/").then((response) => setLeads(response.data));
-  }, []);
-
-  // 2. Função acionada quando o utilizador solta o cartão
+export default function KanbanBoard({
+  leads,
+  onUpdateStatus,
+}: KanbanBoardProps) {
   const onDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
-    // Se largou fora de uma coluna válida, não faz nada
     if (!destination) return;
-
-    // Se largou no mesmo sítio de onde tirou, não faz nada
     if (
       destination.droppableId === source.droppableId &&
       destination.index === source.index
@@ -49,19 +44,14 @@ export default function KanbanBoard() {
 
     const novoStatus = destination.droppableId;
 
-    // Atualização Otimista: Atualizamos o visual instantaneamente para o utilizador não esperar
-    setLeads((leadsAtuais) =>
-      leadsAtuais.map((lead) =>
-        lead.id === draggableId ? { ...lead, status: novoStatus } : lead,
-      ),
-    );
+    // 1. Avisa o Pai (App.tsx) para atualizar a tela instantaneamente
+    onUpdateStatus(draggableId, novoStatus);
 
-    // Chamamos a API em segundo plano para persistir a mudança no PostgreSQL
+    // 2. Salva no banco via API
     try {
       await api.patch(`/leads/${draggableId}/status`, { status: novoStatus });
     } catch (error) {
       console.error("Erro ao atualizar o status:", error);
-      // Se a API falhar, poderíamos reverter o estado aqui (rollback)
       alert("Erro ao salvar a alteração no servidor.");
     }
   };
@@ -70,7 +60,6 @@ export default function KanbanBoard() {
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="flex gap-4 overflow-x-auto pb-4">
         {Object.entries(COLUNAS).map(([statusKey, tituloColuna]) => {
-          // Filtramos os leads para mostrar apenas os desta coluna
           const leadsDestaColuna = leads.filter(
             (lead) => lead.status === statusKey,
           );
@@ -120,7 +109,6 @@ export default function KanbanBoard() {
                         )}
                       </Draggable>
                     ))}
-                    {/* Placeholder necessário pela biblioteca para manter o espaço ao arrastar */}
                     {provided.placeholder}
                   </div>
                 </div>
