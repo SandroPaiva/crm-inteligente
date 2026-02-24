@@ -6,6 +6,7 @@ import {
   type DropResult,
 } from "@hello-pangea/dnd";
 import api from "../services/api";
+import { useNavigate } from "react-router-dom";
 
 interface Lead {
   id: string;
@@ -32,6 +33,7 @@ export default function KanbanBoard({
   leads,
   onUpdateStatus,
 }: KanbanBoardProps) {
+  const navigate = useNavigate(); // 2. Hook
   const onDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
@@ -93,6 +95,7 @@ export default function KanbanBoard({
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
+                            onClick={() => navigate(`/leads/${lead.id}`)}
                             className={`p-4 mb-3 rounded-lg shadow-sm border border-gray-200 bg-white ${
                               snapshot.isDragging
                                 ? "shadow-lg ring-2 ring-blue-400"

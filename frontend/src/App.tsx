@@ -11,6 +11,7 @@ import api from "./services/api";
 import KanbanBoard from "./components/KanbanBoard";
 import QueueView from "./components/QueueView";
 import LeadForm from "./components/LeadForm"; // O novo formulário
+import LeadDetails from "./components/LeadDetails"; // Importe o componente
 
 // Componente de Layout que contém o Menu e a lógica de busca de dados
 function Layout() {
@@ -91,6 +92,8 @@ function Layout() {
             }
           />
           <Route path="/novo-lead" element={<LeadForm />} />
+          {/* A Rota Dinâmica: :id será substituído pelo código do lead */}
+          <Route path="/leads/:id" element={<LeadDetails />} />
         </Routes>
       </main>
     </div>
