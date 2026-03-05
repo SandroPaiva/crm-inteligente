@@ -1,5 +1,6 @@
 // frontend/src/components/QueueView.tsx
 import api from "../services/api";
+import { useNavigate } from "react-router-dom";
 
 // Definimos os tipos que vamos receber do componente Pai (App.tsx)
 interface Lead {
@@ -23,6 +24,7 @@ const STATUS_OPCOES = [
 ];
 
 export default function QueueView({ leads, onUpdateStatus }: QueueViewProps) {
+  const navigate = useNavigate(); // 2. Hook
   // Função que lida com a mudança no dropdown (select)
   const handleStatusChange = async (leadId: string, novoStatus: string) => {
     // 1. Atualiza a interface instantaneamente (chamando a função do Pai)
@@ -43,6 +45,9 @@ export default function QueueView({ leads, onUpdateStatus }: QueueViewProps) {
         <thead className="bg-gray-50">
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Interação
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Lead
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -56,6 +61,16 @@ export default function QueueView({ leads, onUpdateStatus }: QueueViewProps) {
         <tbody className="bg-white divide-y divide-gray-200">
           {leads.map((lead) => (
             <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-500">
+                  <div
+                    onClick={() => navigate(`/leads/${lead.id}`)}
+                    className="cursor-pointer hover:text-blue-600"
+                  >
+                    Editar
+                  </div>
+                </div>
+              </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="text-sm font-medium text-gray-900">
                   {lead.nome}

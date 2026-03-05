@@ -1,111 +1,48 @@
-// frontend/src/App.tsx
-import { useState, useEffect } from "react";
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Link,
-  useLocation,
-} from "react-router-dom";
-import api from "./services/api";
-import KanbanBoard from "./components/KanbanBoard";
-import QueueView from "./components/QueueView";
-import LeadForm from "./components/LeadForm"; // O novo formulário
-import LeadDetails from "./components/LeadDetails"; // Importe o componente
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import Layout from "./components/Layout";
+import Dashboard from "./pages/Dashboard";
+import ContactsList from "./pages/ContactsList";
+import Kanban from "./pages/Kanban";
+import Analytics from "./pages/Analytics";
+import LeadDetails from "./components/LeadDetails";
+import LeadForm from "./components/LeadForm";
+import Tarefas from "./pages/Tarefas";
+import Login from "./pages/Login";
+import Equipe from "./pages/Equipe";
+import Empreendimentos from "./pages/Empreendimentos";
 
-// Componente de Layout que contém o Menu e a lógica de busca de dados
-function Layout() {
-  const location = useLocation();
-  const [leads, setLeads] = useState<any[]>([]);
+const PrivateRoute = () => {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center"><p className="text-white">Carregando...</p></div>;
+  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+};
 
-  // Toda vez que a URL mudar (location.pathname), ou ao carregar, ele busca os dados fresquinhos do banco
-  useEffect(() => {
-    api.get("/leads/").then((response) => setLeads(response.data));
-  }, [location.pathname]);
-
-  const handleAtualizarStatus = (id: string, novoStatus: string) => {
-    setLeads((leadsAtuais) =>
-      leadsAtuais.map((lead) =>
-        lead.id === id ? { ...lead, status: novoStatus } : lead,
-      ),
-    );
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Menu de Navegação Global */}
-      <nav className="bg-white shadow-sm border-b px-8 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-6">
-          <h1 className="text-xl font-bold text-blue-600">CRM Inteligente</h1>
-
-          <div className="flex gap-2">
-            <Link
-              to="/kanban"
-              className={`px-3 py-2 rounded-md font-medium ${location.pathname.includes("kanban") ? "bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-100"}`}
-            >
-              📋 Kanban
-            </Link>
-            <Link
-              to="/fila"
-              className={`px-3 py-2 rounded-md font-medium ${location.pathname.includes("fila") ? "bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-100"}`}
-            >
-              ☰ Fila
-            </Link>
-          </div>
-        </div>
-
-        {/* Botão de Adicionar Lead Manualmente */}
-        <Link
-          to="/novo-lead"
-          className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-        >
-          + Novo Lead
-        </Link>
-      </nav>
-
-      {/* Miolo dinâmico das páginas */}
-      <main className="flex-1 p-8">
-        <Routes>
-          {/* O que renderizar em cada URL */}
-          <Route
-            path="/"
-            element={
-              <KanbanBoard
-                leads={leads}
-                onUpdateStatus={handleAtualizarStatus}
-              />
-            }
-          />
-          <Route
-            path="/kanban"
-            element={
-              <KanbanBoard
-                leads={leads}
-                onUpdateStatus={handleAtualizarStatus}
-              />
-            }
-          />
-          <Route
-            path="/fila"
-            element={
-              <QueueView leads={leads} onUpdateStatus={handleAtualizarStatus} />
-            }
-          />
-          <Route path="/novo-lead" element={<LeadForm />} />
-          {/* A Rota Dinâmica: :id será substituído pelo código do lead */}
-          <Route path="/leads/:id" element={<LeadDetails />} />
-        </Routes>
-      </main>
-    </div>
-  );
-}
-
-// O App agora apenas envolve tudo com o BrowserRouter
 function App() {
   return (
-    <BrowserRouter>
-      <Layout />
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          
+          {/* Rotas Protegidas */}
+          <Route element={<PrivateRoute />}>
+            <Route element={<Layout />}>
+              <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Navigate to="/" replace />} />
+              <Route path="/leads" element={<ContactsList />} />
+              <Route path="/negocios" element={<Kanban />} />
+              <Route path="/relatorios" element={<Analytics />} />
+              <Route path="/leads/:id" element={<LeadDetails />} />
+              <Route path="/novo-lead" element={<LeadForm />} />
+              <Route path="/tarefas" element={<Tarefas />} />
+              <Route path="/equipe" element={<Equipe />} />
+              <Route path="/empreendimentos" element={<Empreendimentos />} />
+            </Route>
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

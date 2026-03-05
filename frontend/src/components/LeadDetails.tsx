@@ -1,191 +1,578 @@
-// frontend/src/components/LeadDetails.tsx
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { Phone, Mail, MapPin, Link2, Plus, Upload, Building2, Briefcase, FileText, X } from "lucide-react";
+import clsx from "clsx";
 import api from "../services/api";
-
-// Tipagem dos dados (igual ao Backend)
-interface Interacao {
-  id: string;
-  tipo: string;
-  conteudo: string;
-  criado_em: string;
-}
-
-interface LeadDetalhado {
-  id: string;
-  nome: string;
-  email_primario: string;
-  celular_primario: string;
-  status: string;
-  interacoes: Interacao[]; // A lista de histórico
-}
-
-const STATUS_OPCOES = [
-  { value: "novo", label: "Novo Lead" },
-  { value: "em_atendimento", label: "Em Atendimento" },
-  { value: "proposta", label: "Proposta" },
-  { value: "ganho", label: "Ganho" },
-  { value: "perdido", label: "Perdido" },
-];
+import { useAuth } from "../context/AuthContext";
 
 export default function LeadDetails() {
-  const { id } = useParams(); // Pega o ID da URL
-  const navigate = useNavigate();
-  const [lead, setLead] = useState<LeadDetalhado | null>(null);
+  const { id } = useParams();
+  const { user } = useAuth();
+  const [lead, setLead] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [activeTab, setActiveTab] = useState<'timeline' | 'tasks'>('timeline');
 
-  // Estado do formulário de nova interação
-  const [novaNota, setNovaNota] = useState("");
-  const [novoStatus, setNovoStatus] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isAddingContact, setIsAddingContact] = useState(false);
+  const [newContactData, setNewContactData] = useState({ nome: '', cargo: '', email: '', telefone: '' });
+  const [savingContact, setSavingContact] = useState(false);
 
-  // Busca os dados assim que a tela abre
+  const handleAddContact = async () => {
+    setSavingContact(true);
+    try {
+      await api.post(`/leads/${id}/contatos`, newContactData);
+      setIsAddingContact(false);
+      setNewContactData({ nome: '', cargo: '', email: '', telefone: '' });
+      fetchLead();
+    } catch (e) {
+      alert("Erro ao adicionar contato.");
+    } finally {
+      setSavingContact(false);
+    }
+  };
+
+  const openEditModal = () => {
+    if (lead) {
+      setEditFormData({
+        nome: lead.nome || "",
+        email_primario: lead.email_primario || "",
+        celular_primario: lead.celular_primario || "",
+        interesse: lead.interesse || "",
+        origem: lead.origem || "",
+        genero: lead.genero || "outros",
+        status: lead.status || "novo",
+      });
+      setIsEditing(true);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    setSavingEdit(true);
+    try {
+      await api.put(`/leads/${id}`, editFormData);
+      setIsEditing(false);
+      fetchLead();
+    } catch (e) {
+      alert("Erro ao atualizar perfil.");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+  const fetchLead = () => {
+    if (id) {
+      setLoading(true);
+      api.get(`/leads/${id}`)
+         .then((res) => {
+            setLead(res.data);
+            setLoading(false);
+         })
+         .catch((err) => {
+            console.error(err);
+            setLoading(false);
+         });
+    }
+  };
+
   useEffect(() => {
-    carregarLead();
+    fetchLead();
   }, [id]);
 
-  const carregarLead = async () => {
-    try {
-      const response = await api.get(`/leads/${id}`);
-      setLead(response.data);
-      setNovoStatus(response.data.status); // Já deixa o select preenchido com o status atual
-    } catch (error) {
-      alert("Erro ao carregar lead.");
-      navigate("/kanban");
-    }
+  if (loading) return <div className="p-8">Carregando detalhes...</div>;
+  if (!lead) return <div className="p-8 text-red-500">Lead não encontrado.</div>;
+
+  let avatarUrl = "https://i.pravatar.cc/150?u="+lead.id;
+  if (lead.genero === 'masculino') avatarUrl = "https://xsgames.co/randomusers/avatar.php?g=male&uid="+lead.id;
+  if (lead.genero === 'feminino') avatarUrl = "https://xsgames.co/randomusers/avatar.php?g=female&uid="+lead.id;
+
+  // Data mapping from backend
+  const profile = {
+    name: lead.nome,
+    title: lead.interesse || "Interesse não especificado",
+    company: lead.origem || "Não informado",
+    email: lead.email_primario,
+    phone: lead.celular_primario,
+    linkedin: lead.utms?.linkedin || "",
+    location: `${lead.cidade || ''} - ${lead.estado || ''}`,
+    status: lead.status ? lead.status.toUpperCase().replace("_", " ") : "NOVO",
+    avatar: avatarUrl,
+    totalDeals: "-",
+    openTasks: lead.tarefas ? lead.tarefas.filter((t: any) => t.status === "pendente").length : 0,
+    completedTasks: lead.tarefas ? lead.tarefas.filter((t: any) => t.status === "concluida").length : 0
   };
 
-  const handleSalvarInteracao = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!novaNota) return;
-
-    setLoading(true);
-    try {
-      // Envia a nota E o status (Regra de Negócio)
-      await api.post(`/leads/${id}/interacoes`, {
-        tipo: "nota", // Por enquanto fixo como nota, depois podemos expandir
-        conteudo: novaNota,
-        novo_status: novoStatus,
-      });
-
-      setNovaNota(""); // Limpa o campo
-      carregarLead(); // Recarrega a tela para mostrar a nota nova na lista
-    } catch (error) {
-      console.error(error);
-      alert("Erro ao salvar interação.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!lead) return <div className="p-8">Carregando...</div>;
+  const timeline = lead.interacoes?.map((int: any) => ({
+    type: int.tipo,
+    title: int.tipo === 'nota' ? 'Nota Adicionada' : int.tipo,
+    time: new Date(int.criado_em).toLocaleString(),
+    content: int.conteudo,
+    tag: null,
+    icon: FileText,
+    iconColor: 'text-orange-500',
+    iconBg: 'bg-orange-100'
+  })) || [];
 
   return (
-    <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-      {/* COLUNA DA ESQUERDA: DADOS DO CLIENTE */}
-      <div className="md:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-fit">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">{lead.nome}</h2>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-gray-500 uppercase font-bold">
-              Status Atual
-            </label>
-            <span className="block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm w-fit mt-1">
-              {STATUS_OPCOES.find((o) => o.value === lead.status)?.label ||
-                lead.status}
+    <div className="p-8 max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      {/* LEFT COLUMN: Profile */}
+      <div className="lg:col-span-3 space-y-6">
+         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col items-center">
+            <img src={profile.avatar} alt={profile.name} className="w-24 h-24 rounded-full border-4 border-white shadow-sm mb-4" />
+            <h2 className="text-xl font-bold text-gray-900">{profile.name}</h2>
+            <p className="text-sm text-gray-500 mb-2">{profile.title}</p>
+            <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full mb-6">
+              {profile.status}
             </span>
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 uppercase font-bold">
-              E-mail
-            </label>
-            <p className="text-gray-700">{lead.email_primario}</p>
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 uppercase font-bold">
-              Celular
-            </label>
-            <p className="text-gray-700">{lead.celular_primario}</p>
-          </div>
-          <button
-            onClick={() => navigate("/kanban")}
-            className="text-blue-600 text-sm hover:underline mt-4"
-          >
-            ← Voltar para o Kanban
-          </button>
-        </div>
-      </div>
 
-      {/* COLUNA DA DIREITA: HISTÓRICO E AÇÃO */}
-      <div className="md:col-span-2 space-y-6">
-        {/* Formulário de Nova Interação */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <h3 className="font-bold text-gray-700 mb-4">Registrar Interação</h3>
-          <form onSubmit={handleSalvarInteracao}>
-            <textarea
-              className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 border"
-              rows={3}
-              placeholder="Escreva uma nota, resumo da ligação ou e-mail..."
-              value={novaNota}
-              onChange={(e) => setNovaNota(e.target.value)}
-              required
-            />
+            <div className="w-full space-y-4 mb-8">
+               <div className="flex items-center gap-3 text-sm text-gray-600">
+                  <Building2 className="w-4 h-4 text-gray-400" />
+                  {profile.company}
+               </div>
+               <div className="flex items-center gap-3 text-sm text-blue-600">
+                  <Mail className="w-4 h-4 text-gray-400" />
+                  {profile.email}
+               </div>
+               <div className="flex items-center gap-3 text-sm text-gray-600">
+                  <Phone className="w-4 h-4 text-gray-400" />
+                  {profile.phone}
+               </div>
+               {profile.linkedin && (
+                 <div className="flex items-center gap-3 text-sm text-gray-600">
+                    <Link2 className="w-4 h-4 text-gray-400" />
+                    {profile.linkedin}
+                 </div>
+               )}
+               {profile.location !== " - " && (
+                 <div className="flex items-center gap-3 text-sm text-gray-600">
+                    <MapPin className="w-4 h-4 text-gray-400" />
+                    {profile.location}
+                 </div>
+               )}
+            </div>
 
-            <div className="flex items-center justify-between mt-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Mover para:</span>
-                <select
-                  value={novoStatus}
-                  onChange={(e) => setNovoStatus(e.target.value)}
-                  className="border-gray-300 rounded-md shadow-sm text-sm p-2 border"
-                >
-                  {STATUS_OPCOES.map((op) => (
-                    <option key={op.value} value={op.value}>
-                      {op.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
+             <div className="w-full space-y-3">
               <button
-                type="submit"
-                disabled={loading}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                {loading ? "Salvando..." : "Salvar Interação"}
+                onClick={async () => {
+                  const nota = window.prompt("Digite uma nota sobre o lead:");
+                  if (nota) {
+                    try {
+                      await api.post(`/leads/${id}/interacoes`, {
+                        tipo: 'nota',
+                        conteudo: nota,
+                        novo_status: lead?.status || 'novo'
+                      });
+                      fetchLead();
+                    } catch (e) {
+                      alert("Erro ao adicionar nota.");
+                    }
+                  }
+                }}
+                className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm">
+                <Plus className="w-4 h-4" /> Nova Atividade
+              </button>
+              <button 
+                onClick={openEditModal}
+                className="w-full justify-center items-center py-2.5 bg-gray-50 text-gray-700 font-medium rounded-lg text-sm hover:bg-gray-100 border border-gray-200 transition-colors">
+                Editar Perfil
               </button>
             </div>
-          </form>
-        </div>
+         </div>
 
-        {/* Linha do Tempo (Timeline) */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <h3 className="font-bold text-gray-700 mb-6">Histórico</h3>
-          <div className="space-y-6">
-            {lead.interacoes.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">
-                Nenhuma interação registrada ainda.
-              </p>
-            ) : (
-              lead.interacoes.map((interacao) => (
-                <div key={interacao.id} className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full mt-2"></div>
-                    <div className="w-0.5 bg-gray-200 flex-1 h-full mt-1"></div>
+         <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Open Tasks</span>
+              <span className="text-2xl font-bold text-gray-900">{profile.openTasks}</span>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Completed Tasks</span>
+              <span className="text-2xl font-bold text-gray-900">{profile.completedTasks}</span>
+            </div>
+         </div>
+      </div>
+
+      {/* MIDDLE COLUMN: Timeline/Tabs */}
+      <div className="lg:col-span-6 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-[calc(100vh-8rem)]">
+         {/* Tabs */}
+         <div className="flex border-b border-gray-100 px-6 pt-2">
+            <button 
+              onClick={() => setActiveTab('timeline')}
+              className={clsx("px-6 py-4 text-sm font-bold flex items-center gap-2", activeTab === 'timeline' ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-800")}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              Timeline
+            </button>
+            <button 
+              onClick={() => setActiveTab('tasks')}
+              className={clsx("px-6 py-4 text-sm font-bold flex items-center gap-2", activeTab === 'tasks' ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-800")}>
+               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+               Tarefas
+            </button>
+         </div>
+
+         {/* Timeline Content */}
+         {activeTab === 'timeline' && (
+           <div className="flex-1 overflow-auto p-6 space-y-8">
+              {timeline.map((item: any, idx: number) => (
+                <div key={idx} className="relative pl-10">
+                  {/* Connector Line */}
+                  {idx !== timeline.length - 1 && (
+                    <div className="absolute left-4 top-10 bottom-[-2rem] w-px bg-gray-200"></div>
+                  )}
+                  
+                  {/* Icon */}
+                  <div className={clsx("absolute left-0 top-0 w-8 h-8 rounded-full border-4 border-white flex items-center justify-center", item.iconBg, item.iconColor)}>
+                    <item.icon className="w-3.5 h-3.5" />
                   </div>
-                  <div className="pb-4">
-                    <p className="text-xs text-gray-400 mb-1">
-                      {new Date(interacao.criado_em).toLocaleString()}
-                    </p>
-                    <div className="bg-gray-50 p-3 rounded-lg text-gray-800 text-sm border border-gray-100">
-                      {interacao.conteudo}
+
+                  {/* Content */}
+                  <div>
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="text-sm font-bold text-gray-900">{item.title}</h4>
+                      <span className="text-xs text-gray-400 font-medium">{item.time}</span>
                     </div>
+                    <p className={clsx("text-sm mb-3", item.type === 'email' ? 'italic text-gray-600' : 'text-gray-600')}>
+                      {item.content}
+                    </p>
+                    {item.tag && (
+                      item.tagIsLink ? (
+                        <a href="#" className="text-xs font-semibold text-blue-600 hover:underline inline-flex items-center gap-1">
+                          {item.tag} <Link2 className="w-3 h-3" />
+                        </a>
+                      ) : (
+                        <span className="inline-block px-2.5 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">
+                          {item.tag}
+                        </span>
+                      )
+                    )}
                   </div>
                 </div>
-              ))
-            )}
+              ))}
+           </div>
+         )}
+
+         {/* Tasks Content */}
+         {activeTab === 'tasks' && (
+           <div className="flex-1 overflow-auto p-6 space-y-4">
+              {(!lead.tarefas || lead.tarefas.length === 0) ? (
+                <p className="text-sm text-gray-500">Nenhuma tarefa para este lead.</p>
+              ) : (
+                lead.tarefas.map((t: any) => (
+                  <div key={t.id} className="p-4 border border-gray-100 rounded-lg shadow-sm flex items-start gap-4 hover:border-gray-200 transition-colors">
+                    <button 
+                      onClick={async () => {
+                         try {
+                           const novoStatus = t.status === "pendente" ? "concluida" : "pendente";
+                           await api.patch(`/tarefas/${t.id}`, { status: novoStatus });
+                           fetchLead();
+                         } catch (err) {}
+                      }}
+                      className={clsx("w-5 h-5 mt-0.5 rounded-full border-2 flex items-center justify-center transition-colors", t.status === "concluida" ? "border-emerald-500 bg-emerald-500" : "border-gray-300 hover:border-blue-500")}>
+                      {t.status === "concluida" && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
+                    </button>
+                    <div>
+                      <h4 className={clsx("text-sm font-bold", t.status === "concluida" ? "text-gray-400 line-through" : "text-gray-900")}>{t.titulo}</h4>
+                      {t.descricao && <p className="text-xs text-gray-500 mt-1">{t.descricao}</p>}
+                    </div>
+                  </div>
+                ))
+              )}
+              <div className="pt-4 border-t border-gray-100 mt-4">
+                <button 
+                  onClick={async () => {
+                    const titulo = window.prompt("Digite o título da nova tarefa:");
+                    if (titulo) {
+                      try {
+                        await api.post(`/leads/${id}/tarefas`, { titulo, descricao: "" });
+                        fetchLead();
+                      } catch (err) { alert("Erro ao criar tarefa."); }
+                    }
+                  }}
+                  className="text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> Adicionar Tarefa
+                </button>
+              </div>
+           </div>
+         )}
+      </div>
+
+      {/* RIGHT COLUMN: Sidebar Widgets */}
+      <div className="lg:col-span-3 space-y-6">
+         {/* Associated Contacts */}
+         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex justify-between items-center mb-6">
+               <h3 className="text-sm font-bold text-gray-900">Associated Contacts</h3>
+               <button 
+                 onClick={() => setIsAddingContact(true)}
+                 className="text-blue-600 text-sm font-bold hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full transition-colors">ADD</button>
+            </div>
+            <div className="space-y-4">
+               {(!lead.contatos || lead.contatos.length === 0) ? (
+                 <p className="text-xs text-gray-500">Nenhum contato associado.</p>
+               ) : (
+                 lead.contatos.map((contato: any) => {
+                   const initials = contato.nome.substring(0, 2).toUpperCase();
+                   return (
+                     <div key={contato.id} className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">{initials}</div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900 leading-tight">{contato.nome}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{contato.cargo || "Sem cargo"}</p>
+                          {(contato.email || contato.telefone) && (
+                            <p className="text-[10px] text-gray-400 mt-0.5">{contato.telefone} {contato.email && `• ${contato.email}`}</p>
+                          )}
+                        </div>
+                     </div>
+                   );
+                 })
+               )}
+            </div>
+         </div>
+
+         {/* Documents */}
+         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex justify-between items-center mb-6">
+               <h3 className="text-sm font-bold text-gray-900">Documents</h3>
+               <button className="p-1 text-gray-400 hover:text-gray-600">
+                  <Upload className="w-4 h-4" />
+               </button>
+            </div>
+            <div className="space-y-4 mb-4">
+               <div className="flex items-start gap-4 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                  <div className="w-10 h-10 rounded bg-red-100 text-red-500 flex items-center justify-center font-bold text-xs uppercase shrink-0">PDF</div>
+                  <div className="overflow-hidden">
+                    <p className="text-sm font-bold text-gray-900 truncate">Service_Agreement_v2.pdf</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">PDF • 2.4 MB • July 20</p>
+                  </div>
+               </div>
+               <div className="flex items-start gap-4 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                  <div className="w-10 h-10 rounded bg-blue-100 text-blue-500 flex items-center justify-center font-bold text-xs uppercase shrink-0">DOCX</div>
+                  <div className="overflow-hidden">
+                    <p className="text-sm font-bold text-gray-900 truncate">Enterprise_Proposal.docx</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">DOCX • 1.1 MB • Aug 05</p>
+                  </div>
+               </div>
+               <div className="flex items-start gap-4 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                  <div className="w-10 h-10 rounded bg-emerald-100 text-emerald-500 flex items-center justify-center font-bold text-xs uppercase shrink-0">XLSX</div>
+                  <div className="overflow-hidden">
+                    <p className="text-sm font-bold text-gray-900 truncate">Usage_Stats_Q2.xlsx</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">XLSX • 840 KB • Aug 12</p>
+                  </div>
+               </div>
+            </div>
+            <button className="w-full text-center text-sm font-bold text-blue-600 hover:text-blue-700">
+               View all 12 documents
+            </button>
+         </div>
+
+         {/* Map Widget */}
+         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="h-32 bg-gray-200 relative">
+               {/* Map Pattern Placeholder */}
+               <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, black 1px, transparent 0)', backgroundSize: '16px 16px' }}></div>
+               <div className="absolute inset-0 flex items-center justify-center">
+                  <MapPin className="w-8 h-8 text-blue-600 drop-shadow-md" fill="white" />
+               </div>
+            </div>
+            <div className="p-4 text-center">
+               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">MAIN HEADQUARTERS</p>
+               <p className="text-xs text-gray-600">123 Market St, San Francisco, CA</p>
+            </div>
+         </div>
+      </div>
+
+      {/* Edit Modal */}
+      {isEditing && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-gray-900">Editar Perfil</h3>
+              <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
+                <input
+                  type="text"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                  value={editFormData.nome}
+                  onChange={(e) => setEditFormData({ ...editFormData, nome: e.target.value })}
+                />
+              </div>
+              {user?.papel !== 'corretor' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">E-mail Primário</label>
+                  <input
+                    type="email"
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                    value={editFormData.email_primario}
+                    onChange={(e) => setEditFormData({ ...editFormData, email_primario: e.target.value })}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 text-gray-400 flex items-center gap-2">
+                    E-mail Primário <span className="text-xs bg-gray-200 px-2 py-0.5 rounded text-gray-600">Restrito</span>
+                  </label>
+                  <input
+                    type="email"
+                    disabled
+                    className="w-full rounded-md bg-gray-100 text-gray-500 border-gray-300 shadow-sm p-2 border cursor-not-allowed"
+                    value={editFormData.email_primario}
+                    title="Vendedores não possuem permissão para alterar o e-mail cadastrado."
+                  />
+                </div>
+              )}
+              
+              {user?.papel !== 'corretor' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Celular Primário</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                    value={editFormData.celular_primario}
+                    onChange={(e) => setEditFormData({ ...editFormData, celular_primario: e.target.value })}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 text-gray-400 flex items-center gap-2">
+                    Celular Primário <span className="text-xs bg-gray-200 px-2 py-0.5 rounded text-gray-600">Restrito</span>
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    className="w-full rounded-md bg-gray-100 text-gray-500 border-gray-300 shadow-sm p-2 border cursor-not-allowed"
+                    value={editFormData.celular_primario}
+                    title="Vendedores não possuem permissão para alterar telefones cadastrados."
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Origem / Empresa</label>
+                <input
+                  type="text"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                  value={editFormData.origem}
+                  onChange={(e) => setEditFormData({ ...editFormData, origem: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Gênero</label>
+                <select
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                  value={editFormData.genero || "outros"}
+                  onChange={(e) => setEditFormData({ ...editFormData, genero: e.target.value })}
+                >
+                  <option value="masculino">Masculino</option>
+                  <option value="feminino">Feminino</option>
+                  <option value="outros">Outros</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fase do Funil</label>
+                <select
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                  value={editFormData.status || "novo"}
+                  onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                >
+                  <option value="novo">Novo</option>
+                  <option value="em_atendimento">Em Atendimento</option>
+                  <option value="proposta">Proposta</option>
+                  <option value="negociacao">Negociação</option>
+                  <option value="ganho">Ganho</option>
+                  <option value="perdido">Perdido</option>
+                </select>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={savingEdit}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
+                {savingEdit ? "Salvando..." : "Salvar Alterações"}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+      {/* Add Contact Modal */}
+      {isAddingContact && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-gray-900">Adicionar Contato</h3>
+              <button onClick={() => setIsAddingContact(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                <input
+                  type="text"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                  value={newContactData.nome}
+                  onChange={(e) => setNewContactData({ ...newContactData, nome: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cargo / Relacionamento</label>
+                <input
+                  type="text"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                  value={newContactData.cargo}
+                  onChange={(e) => setNewContactData({ ...newContactData, cargo: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                <input
+                  type="email"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                  value={newContactData.email}
+                  onChange={(e) => setNewContactData({ ...newContactData, email: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                <input
+                  type="text"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                  value={newContactData.telefone}
+                  onChange={(e) => setNewContactData({ ...newContactData, telefone: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
+              <button
+                onClick={() => setIsAddingContact(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAddContact}
+                disabled={savingContact || !newContactData.nome}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
+                {savingContact ? "Salvando..." : "Salvar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
