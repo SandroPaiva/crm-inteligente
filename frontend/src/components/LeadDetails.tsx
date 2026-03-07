@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Phone, Mail, MapPin, Link2, Plus, Upload, Building2, Briefcase, FileText, X } from "lucide-react";
+import { Phone, Mail, MapPin, Link2, Plus, Upload, Building2, FileText, X } from "lucide-react";
 import clsx from "clsx";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import PhoneInput from "./PhoneInput";
 
 export default function LeadDetails() {
   const { id } = useParams();
@@ -18,6 +19,65 @@ export default function LeadDetails() {
   const [isAddingContact, setIsAddingContact] = useState(false);
   const [newContactData, setNewContactData] = useState({ nome: '', cargo: '', email: '', telefone: '' });
   const [savingContact, setSavingContact] = useState(false);
+
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [corretores, setCorretores] = useState<any[]>([]);
+  const [selectedCorretor, setSelectedCorretor] = useState<string>('');
+  const [savingAssign, setSavingAssign] = useState(false);
+
+  const [isAssigningEmp, setIsAssigningEmp] = useState(false);
+  const [empreendimentos, setEmpreendimentos] = useState<any[]>([]);
+  const [selectedEmp, setSelectedEmp] = useState<string>('');
+  const [savingAssignEmp, setSavingAssignEmp] = useState(false);
+
+  useEffect(() => {
+    // Buscar lista de corretores
+    if (user?.papel !== 'corretor') {
+      api.get("/usuarios/").then((res) => {
+        setCorretores(res.data);
+      }).catch(console.error);
+    }
+    
+    // Buscar lista de empreendimentos
+    api.get("/empreendimentos/").then((res) => {
+      setEmpreendimentos(res.data);
+    }).catch(console.error);
+  }, [user]);
+
+  const handleAssignBroker = async () => {
+    setSavingAssign(true);
+    try {
+      if (!selectedCorretor) {
+        alert("Selecione um corretor");
+        return;
+      }
+      await api.patch(`/leads/${id}/corretor`, { corretor_id: selectedCorretor });
+      setIsAssigning(false);
+      fetchLead();
+    } catch (e) {
+      alert("Erro ao atribuir corretor.");
+    } finally {
+      setSavingAssign(false);
+    }
+  };
+
+  const handleAssignEmp = async () => {
+    setSavingAssignEmp(true);
+    try {
+      if (!selectedEmp) {
+        alert("Selecione um empreendimento");
+        return;
+      }
+      await api.patch(`/leads/${id}/empreendimento`, { empreendimento_id: selectedEmp });
+      setIsAssigningEmp(false);
+      fetchLead();
+    } catch (e) {
+      alert("Erro ao vincular empreendimento.");
+    } finally {
+      setSavingAssignEmp(false);
+    }
+  };
+
 
   const handleAddContact = async () => {
     setSavingContact(true);
@@ -114,7 +174,13 @@ export default function LeadDetails() {
   })) || [];
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <div className="p-8 max-w-[1600px] mx-auto">
+      <div className="mb-6 pb-4 border-b border-gray-200">
+        <h1 className="text-2xl font-black text-gray-900 tracking-tight">Detalhes do Lead</h1>
+        <p className="text-sm text-gray-500 mt-1">Visualize e edite as informações completas deste lead.</p>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
       
       {/* LEFT COLUMN: Profile */}
       <div className="lg:col-span-3 space-y-6">
@@ -138,6 +204,62 @@ export default function LeadDetails() {
                <div className="flex items-center gap-3 text-sm text-gray-600">
                   <Phone className="w-4 h-4 text-gray-400" />
                   {profile.phone}
+               </div>
+               
+                {/* Broker/Corretor Assignment UI */}
+               <div className="pt-4 mt-6 border-t border-gray-100 w-full">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 block">Atribuído a / Corretor</label>
+                  {lead.corretor ? (
+                     <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                           {lead.corretor.nome.substring(0, 2)}
+                        </div>
+                        <div>
+                           <p className="text-sm font-bold text-gray-900 leading-none">{lead.corretor.nome}</p>
+                           {user?.papel !== 'corretor' && (
+                             <p onClick={() => { setSelectedCorretor(lead.corretor_id || ''); setIsAssigning(true); }} className="text-xs text-blue-600 mt-1 cursor-pointer hover:underline">Reatribuir</p>
+                           )}
+                        </div>
+                     </div>
+                  ) : (
+                     <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                           ND
+                        </div>
+                        <div>
+                           <p className="text-sm font-medium text-gray-500 leading-none">Não definido</p>
+                           {user?.papel !== 'corretor' && (
+                             <p onClick={() => setIsAssigning(true)} className="text-xs text-blue-600 mt-1 cursor-pointer hover:underline">Atribuir Corretor</p>
+                           )}
+                        </div>
+                     </div>
+                  )}
+               </div>
+
+               {/* Empreendimento Assignment UI */}
+               <div className="pt-4 mt-4 border-t border-gray-100 w-full">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 block">Empreendimento de Interesse</label>
+                  {lead.empreendimento?.nome ? (
+                     <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                           <Building2 className="w-4 h-4" />
+                        </div>
+                        <div>
+                           <p className="text-sm font-bold text-gray-900 leading-none">{lead.empreendimento.nome}</p>
+                           <p onClick={() => { setSelectedEmp(lead.empreendimento_id || ''); setIsAssigningEmp(true); }} className="text-xs text-emerald-600 mt-1 cursor-pointer hover:underline">Alterar Empreendimento</p>
+                        </div>
+                     </div>
+                  ) : (
+                     <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                           <Building2 className="w-4 h-4" />
+                        </div>
+                        <div>
+                           <p className="text-sm font-medium text-gray-500 leading-none">Nenhum vinculado</p>
+                           <p onClick={() => setIsAssigningEmp(true)} className="text-xs text-emerald-600 mt-1 cursor-pointer hover:underline">Vincular Empreendimento</p>
+                        </div>
+                     </div>
+                  )}
                </div>
                {profile.linkedin && (
                  <div className="flex items-center gap-3 text-sm text-gray-600">
@@ -333,37 +455,19 @@ export default function LeadDetails() {
          {/* Documents */}
          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex justify-between items-center mb-6">
-               <h3 className="text-sm font-bold text-gray-900">Documents</h3>
+               <h3 className="text-sm font-bold text-gray-900">Documentos Anexados</h3>
                <button className="p-1 text-gray-400 hover:text-gray-600">
                   <Upload className="w-4 h-4" />
                </button>
             </div>
-            <div className="space-y-4 mb-4">
-               <div className="flex items-start gap-4 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                  <div className="w-10 h-10 rounded bg-red-100 text-red-500 flex items-center justify-center font-bold text-xs uppercase shrink-0">PDF</div>
-                  <div className="overflow-hidden">
-                    <p className="text-sm font-bold text-gray-900 truncate">Service_Agreement_v2.pdf</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">PDF • 2.4 MB • July 20</p>
-                  </div>
-               </div>
-               <div className="flex items-start gap-4 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                  <div className="w-10 h-10 rounded bg-blue-100 text-blue-500 flex items-center justify-center font-bold text-xs uppercase shrink-0">DOCX</div>
-                  <div className="overflow-hidden">
-                    <p className="text-sm font-bold text-gray-900 truncate">Enterprise_Proposal.docx</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">DOCX • 1.1 MB • Aug 05</p>
-                  </div>
-               </div>
-               <div className="flex items-start gap-4 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                  <div className="w-10 h-10 rounded bg-emerald-100 text-emerald-500 flex items-center justify-center font-bold text-xs uppercase shrink-0">XLSX</div>
-                  <div className="overflow-hidden">
-                    <p className="text-sm font-bold text-gray-900 truncate">Usage_Stats_Q2.xlsx</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">XLSX • 840 KB • Aug 12</p>
-                  </div>
-               </div>
+            
+            <div className="py-6 flex flex-col items-center justify-center text-center border-2 border-dashed border-gray-100 rounded-lg">
+               <FileText className="w-8 h-8 text-gray-300 mb-2" />
+               <p className="text-sm font-medium text-gray-600">Nenhum documento</p>
+               <p className="text-xs text-gray-400 max-w-[200px] mt-1">
+                 A capacidade de anexar contratos e propostas será implementada em atualizações futuras.
+               </p>
             </div>
-            <button className="w-full text-center text-sm font-bold text-blue-600 hover:text-blue-700">
-               View all 12 documents
-            </button>
          </div>
 
          {/* Map Widget */}
@@ -430,11 +534,10 @@ export default function LeadDetails() {
               {user?.papel !== 'corretor' ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Celular Primário</label>
-                  <input
-                    type="text"
+                  <PhoneInput
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
                     value={editFormData.celular_primario}
-                    onChange={(e) => setEditFormData({ ...editFormData, celular_primario: e.target.value })}
+                    onChange={(val) => setEditFormData({ ...editFormData, celular_primario: val })}
                   />
                 </div>
               ) : (
@@ -442,12 +545,11 @@ export default function LeadDetails() {
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-gray-400 flex items-center gap-2">
                     Celular Primário <span className="text-xs bg-gray-200 px-2 py-0.5 rounded text-gray-600">Restrito</span>
                   </label>
-                  <input
-                    type="text"
+                  <PhoneInput
                     disabled
                     className="w-full rounded-md bg-gray-100 text-gray-500 border-gray-300 shadow-sm p-2 border cursor-not-allowed"
                     value={editFormData.celular_primario}
-                    title="Vendedores não possuem permissão para alterar telefones cadastrados."
+                    onChange={() => {}}
                   />
                 </div>
               )}
@@ -547,11 +649,10 @@ export default function LeadDetails() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-                <input
-                  type="text"
+                <PhoneInput
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
                   value={newContactData.telefone}
-                  onChange={(e) => setNewContactData({ ...newContactData, telefone: e.target.value })}
+                  onChange={(val) => setNewContactData({ ...newContactData, telefone: val })}
                 />
               </div>
             </div>
@@ -573,6 +674,82 @@ export default function LeadDetails() {
           </div>
         </div>
       )}
+
+        {/* Assign Broker Modal */}
+        {isAssigning && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-lg w-full max-w-sm overflow-hidden animate-in zoom-in-95">
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 className="text-lg font-bold text-gray-900">Atribuir Corretor</h3>
+                <button onClick={() => setIsAssigning(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Selecione o Profissional</label>
+                <select
+                  value={selectedCorretor}
+                  onChange={(e) => setSelectedCorretor(e.target.value)}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                >
+                  <option value="">Selecione...</option>
+                  {corretores.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nome}</option>
+                  ))}
+                </select>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button onClick={() => setIsAssigning(false)} className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md">Cancelar</button>
+                  <button 
+                    onClick={handleAssignBroker} 
+                    disabled={savingAssign || !selectedCorretor}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50"
+                  >
+                    {savingAssign ? "Salvando..." : "Confirmar Atribuição"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Assign Empreendimento Modal */}
+        {isAssigningEmp && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-lg w-full max-w-sm overflow-hidden animate-in zoom-in-95">
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-emerald-50/50">
+                <h3 className="text-lg font-bold text-gray-900">Vincular Empreendimento</h3>
+                <button onClick={() => setIsAssigningEmp(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Selecione o Empreendimento</label>
+                <select
+                  value={selectedEmp}
+                  onChange={(e) => setSelectedEmp(e.target.value)}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 p-2 border"
+                >
+                  <option value="">Selecione...</option>
+                  {empreendimentos.map((emp) => (
+                    <option key={emp.id} value={emp.id}>{emp.nome}</option>
+                  ))}
+                </select>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button onClick={() => setIsAssigningEmp(false)} className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md">Cancelar</button>
+                  <button 
+                    onClick={handleAssignEmp} 
+                    disabled={savingAssignEmp || !selectedEmp}
+                    className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-md disabled:opacity-50"
+                  >
+                    {savingAssignEmp ? "Salvando..." : "Confirmar Vínculo"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }

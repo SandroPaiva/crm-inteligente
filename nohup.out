@@ -1,0 +1,364 @@
+INFO:     Will watch for changes in these directories: ['/home/sandropaiva/Documentos/crm-inteligente']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [101237] using StatReload
+INFO:     Started server process [101242]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:33214 - "OPTIONS /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33224 - "OPTIONS /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33234 - "OPTIONS /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33240 - "OPTIONS /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33234 - "GET /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33224 - "GET /tarefas/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:33240 - "GET /leads/ HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/middleware/cors.py", line 95, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/middleware/cors.py", line 153, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/fastapi/routing.py", line 446, in app
+    content = await serialize_response(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+    )
+    ^
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/fastapi/routing.py", line 284, in serialize_response
+    raise ResponseValidationError(
+    ...<3 lines>...
+    )
+fastapi.exceptions.ResponseValidationError: 1 validation error:
+  {'type': 'value_error', 'loc': ('response', 5, 'email_primario'), 'msg': "value is not a valid email address: The part after the @-sign contains invalid characters: ','.", 'input': 'teste015@teste,com.br', 'ctx': {'reason': "The part after the @-sign contains invalid characters: ','."}}
+
+  File "/home/sandropaiva/Documentos/crm-inteligente/main.py", line 365, in listar_leads
+    GET /leads/
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:33234 - "GET /leads/ HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/middleware/cors.py", line 95, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/middleware/cors.py", line 153, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/fastapi/routing.py", line 446, in app
+    content = await serialize_response(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+    )
+    ^
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/fastapi/routing.py", line 284, in serialize_response
+    raise ResponseValidationError(
+    ...<3 lines>...
+    )
+fastapi.exceptions.ResponseValidationError: 1 validation error:
+  {'type': 'value_error', 'loc': ('response', 5, 'email_primario'), 'msg': "value is not a valid email address: The part after the @-sign contains invalid characters: ','.", 'input': 'teste015@teste,com.br', 'ctx': {'reason': "The part after the @-sign contains invalid characters: ','."}}
+
+  File "/home/sandropaiva/Documentos/crm-inteligente/main.py", line 365, in listar_leads
+    GET /leads/
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:42746 - "GET /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42756 - "GET /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42744 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:42756 - "GET /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32848 - "OPTIONS /usuarios/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32864 - "OPTIONS /usuarios/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:32864 - "GET /usuarios/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32840 - "GET /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32848 - "GET /usuarios/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:32870 - "GET /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60880 - "OPTIONS /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60880 - "OPTIONS /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60894 - "OPTIONS /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60910 - "OPTIONS /tarefas/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+INFO:     127.0.0.1:60894 - "GET /tarefas/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:60922 - "GET /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60910 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:60894 - "GET /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54602 - "OPTIONS /usuarios/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54606 - "OPTIONS /usuarios/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:54606 - "GET /usuarios/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54592 - "GET /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54602 - "GET /usuarios/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:54622 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:57444 - "GET /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57432 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:57454 - "GET /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57444 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:57454 - "GET /usuarios/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57444 - "GET /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57432 - "GET /usuarios/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:57454 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+INFO:     127.0.0.1:58798 - "GET /tarefas/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:58806 - "GET /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58794 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:58806 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:58794 - "GET /usuarios/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58798 - "GET /usuarios/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58806 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:58798 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:41602 - "GET /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41588 - "GET /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41612 - "GET /tarefas/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:41602 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:58136 - "GET /usuarios/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58146 - "GET /usuarios/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58128 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:58146 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:58146 - "GET /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58136 - "GET /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58128 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:58128 - "OPTIONS /leads/95f5b1db-bc19-4bca-84e0-dba360cfd020 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58136 - "GET /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58146 - "GET /leads/95f5b1db-bc19-4bca-84e0-dba360cfd020 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58146 - "GET /leads/95f5b1db-bc19-4bca-84e0-dba360cfd020 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34430 - "OPTIONS /tarefas/bdf27f49-517f-4a00-9cd6-e88153cdec2d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34430 - "PATCH /tarefas/bdf27f49-517f-4a00-9cd6-e88153cdec2d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34430 - "GET /leads/95f5b1db-bc19-4bca-84e0-dba360cfd020 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34430 - "PATCH /tarefas/bdf27f49-517f-4a00-9cd6-e88153cdec2d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34430 - "GET /leads/95f5b1db-bc19-4bca-84e0-dba360cfd020 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34430 - "PATCH /tarefas/bdf27f49-517f-4a00-9cd6-e88153cdec2d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34430 - "GET /leads/95f5b1db-bc19-4bca-84e0-dba360cfd020 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34430 - "PATCH /tarefas/bdf27f49-517f-4a00-9cd6-e88153cdec2d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34430 - "GET /leads/95f5b1db-bc19-4bca-84e0-dba360cfd020 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34430 - "PATCH /tarefas/bdf27f49-517f-4a00-9cd6-e88153cdec2d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34430 - "GET /leads/95f5b1db-bc19-4bca-84e0-dba360cfd020 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34430 - "PATCH /tarefas/bdf27f49-517f-4a00-9cd6-e88153cdec2d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34430 - "GET /leads/95f5b1db-bc19-4bca-84e0-dba360cfd020 HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:43276 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:43282 - "GET /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36366 - "OPTIONS /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36368 - "OPTIONS /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36380 - "OPTIONS /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36394 - "OPTIONS /tarefas/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:36380 - "GET /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36394 - "GET /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36368 - "GET /tarefas/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:36366 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+INFO:     127.0.0.1:59078 - "GET /tarefas/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:59094 - "GET /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59070 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:59094 - "GET /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38722 - "OPTIONS /usuarios/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38728 - "OPTIONS /usuarios/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:38728 - "GET /usuarios/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38718 - "GET /leads/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38722 - "GET /usuarios/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:38744 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:38744 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:38722 - "GET /leads/ HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'schemas.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [101242]
+INFO:     Started server process [106020]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:59322 - "GET /tarefas/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:59324 - "GET /tarefas/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59318 - "GET /leads/ HTTP/1.1" 200 OK
+[DEBUG LISTAR LEADS] Email: admin@crm.com | Papel: admin | Type: <class 'str'>
+[DEBUG LISTAR LEADS] ADMIN: Retornou 61 leads
+INFO:     127.0.0.1:59324 - "GET /leads/ HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'schemas.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [106020]
+Process SpawnProcess-3:
+Traceback (most recent call last):
+  File "/usr/lib/python3.13/multiprocessing/process.py", line 313, in _bootstrap
+    self.run()
+    ~~~~~~~~^^
+  File "/usr/lib/python3.13/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+    ~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+  File "/usr/lib/python3.13/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.13/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/uvicorn/server.py", line 79, in serve
+    await self._serve(sockets)
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/uvicorn/server.py", line 86, in _serve
+    config.load()
+    ~~~~~~~~~~~^^
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/uvicorn/config.py", line 441, in load
+    self.loaded_app = import_from_string(self.app)
+                      ~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/home/sandropaiva/Documentos/crm-inteligente/venv/lib/python3.13/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1026, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/sandropaiva/Documentos/crm-inteligente/main.py", line 9, in <module>
+    import schemas
+  File "/home/sandropaiva/Documentos/crm-inteligente/schemas.py", line 5
+    from pydantic import BaseModel, Efrom uuid import UUID
+                                          ^^^^
+SyntaxError: invalid syntax

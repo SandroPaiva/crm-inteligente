@@ -1,7 +1,7 @@
 import uuid
 # 1. Adicionamos o 'timezone' na importação
 from datetime import datetime, timezone 
-from sqlalchemy import Column, String, Boolean, DateTime, Enum, Text, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, Enum, Text, ForeignKey, Integer
 from sqlalchemy.orm import relationship # <-- Importante!
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from database import Base
@@ -55,8 +55,10 @@ class Empreendimento(Base):
     __tablename__ = "empreendimentos"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    codigo = Column(String(50), nullable=False, unique=True, index=True)
     nome = Column(String(150), nullable=False, unique=True)
     descricao = Column(Text, nullable=True)
+    disponivel = Column(Boolean, default=True)
     
     criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
@@ -68,6 +70,7 @@ class Lead(Base):
     __tablename__ = "leads"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    numero_sequencial = Column(Integer, unique=True, index=True, nullable=True) # Optional in SQLAlchemy if autoincrement isn't strictly native
     status = Column(Enum(StatusLead), default=StatusLead.novo, index=True)
     genero = Column(String(20), nullable=True)
     

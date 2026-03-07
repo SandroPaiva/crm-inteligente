@@ -3,7 +3,9 @@ import models # Importamos para usar o Enum de status
 from uuid import UUID
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, Dict, Any
+import enum
+from typing import Optional, List, Dict, Any
+import models
 
 # O que esperamos receber do Webhook/Formulário
 class LeadCreateWebhook(BaseModel):
@@ -47,6 +49,13 @@ class UsuarioResponse(UsuarioBase):
     class Config:
         from_attributes = True
 
+class UsuarioUpdate(BaseModel):
+    nome: Optional[str] = None
+    email: Optional[EmailStr] = None
+    senha: Optional[str] = None
+    papel: Optional[models.PapelUsuario] = None
+    gerente_id: Optional[UUID] = None
+
 class UsuarioUpdateGerente(BaseModel):
     gerente_id: Optional[UUID] = None
 
@@ -55,8 +64,10 @@ class UsuarioUpdateGerente(BaseModel):
 
 # --- SCHEMAS DE EMPREENDIMENTO ---
 class EmpreendimentoBase(BaseModel):
+    codigo: str
     nome: str
     descricao: Optional[str] = None
+    disponivel: bool = True
 
 class EmpreendimentoCreate(EmpreendimentoBase):
     pass
@@ -71,6 +82,7 @@ class EmpreendimentoResponse(EmpreendimentoBase):
     # Schema para DADOS DE SAÍDA (O que a API devolve para o Frontend)
 class LeadResponse(BaseModel):
     id: UUID
+    numero_sequencial: Optional[int] = None
     nome: str
     email_primario: EmailStr
     celular_primario: str
@@ -79,12 +91,21 @@ class LeadResponse(BaseModel):
     interesse: Optional[str] = None
     corretor_id: Optional[UUID] = None
     empreendimento_id: Optional[UUID] = None
+    corretor: Optional[UsuarioResponse] = None
+    empreendimento: Optional[EmpreendimentoResponse] = None
     criado_em: datetime
 
     class Config:
         from_attributes = True
         
-# Schema para ATUALIZAR O STATUS (Quando arrastar no Kanban)
+# Schema para atribuir empreendimento
+class AtribuirEmpreendimento(BaseModel):
+    empreendimento_id: Optional[UUID] = None
+
+# Schema para atribuir corretor
+class AtribuirCorretor(BaseModel):
+    corretor_id: Optional[UUID] = None
+
 class LeadUpdateStatus(BaseModel):
     status: models.StatusLead = Field(..., description="Novo status do lead no funil")
 
@@ -115,12 +136,18 @@ class InteracaoCreate(BaseModel):
     conteudo: str = Field(..., example="Enviei a proposta comercial atualizada.")
     novo_status: models.StatusLead = Field(..., description="Obrigatório confirmar ou alterar o status do lead na interação")
 
+class LeadResumo(BaseModel):
+    id: UUID
+    nome: str
+
 # O que a API vai devolver para o Frontend mostrar no histórico
 class InteracaoResponse(BaseModel):
     id: UUID
     tipo: str
     conteudo: str
     criado_em: datetime
+    lead_id: UUID
+    lead: Optional[LeadResumo] = None
 
     class Config:
         from_attributes = True

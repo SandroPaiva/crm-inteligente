@@ -1,14 +1,18 @@
 # main.py
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from database import engine, Base, get_db
+from typing import List, Optional, Any
 import models
 import schemas
 from uuid import UUID
 import auth
 from jose import jwt, JWTError
+import csv
+import io
 
 Base.metadata.create_all(bind=engine)
 
@@ -89,6 +93,117 @@ def criar_usuario(usuario_in: schemas.UsuarioCreate, db: Session = Depends(get_d
     db.refresh(novo_usuario)
     return novo_usuario
 
+@app.patch("/usuarios/{usuario_id}", response_model=schemas.UsuarioResponse)
+def atualizar_usuario_completo(usuario_id: str, update_data: schemas.UsuarioUpdate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    """
+    Atualiza as informações cadastradas de um usuário.
+    Admin edita todos. Gerente edita apenas corretores.
+    """
+    usuario_db = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
+    if not usuario_db:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+
+    # Controle de permissões
+    if current_user.papel == models.PapelUsuario.corretor:
+        raise HTTPException(status_code=403, detail="Acesso negado.")
+    if current_user.papel == models.PapelUsuario.gerente:
+        if usuario_db.papel != models.PapelUsuario.corretor:
+            raise HTTPException(status_code=403, detail="Gerentes só podem editar corretores.")
+        update_data.papel = None # Gerente não pode promover ninguém
+        update_data.gerente_id = None # Gerente não pode mudar o chefe do corretor (que é ele mesmo)
+
+    if update_data.nome is not None:
+        usuario_db.nome = update_data.nome
+    if update_data.email is not None:
+        # Verifica duplicidade
+        existente = db.query(models.Usuario).filter(models.Usuario.email == update_data.email).first()
+        if existente and str(existente.id) != str(usuario_id):
+            raise HTTPException(status_code=400, detail="Este e-mail já pertence a outro usuário.")
+        usuario_db.email = update_data.email
+    if update_data.senha is not None and update_data.senha.strip() != "":
+        usuario_db.senha_hash = auth.get_password_hash(update_data.senha)
+    if update_data.papel is not None:
+        usuario_db.papel = update_data.papel
+    if update_data.gerente_id is not None:
+        # null representation fix if sent as empty string or zero uuid sometimes
+        if str(update_data.gerente_id) == str(UUID(int=0)):
+             usuario_db.gerente_id = None
+        else:
+             usuario_db.gerente_id = update_data.gerente_id
+
+    db.commit()
+    db.refresh(usuario_db)
+    return usuario_db
+
+@app.post("/usuarios/importar-json", response_model=dict, status_code=201)
+def importar_usuarios_json(payload: dict, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    """
+    Importa um lote de usuários do CSV. Apenas Admin e Gerentes (para corretores).
+    """
+    if current_user.papel == models.PapelUsuario.corretor:
+        raise HTTPException(status_code=403, detail="Sem permissão.")
+
+    rows = payload.get("rows", [])
+    if not isinstance(rows, list):
+        raise HTTPException(status_code=400, detail="O payload deve conter uma lista chamada 'rows'.")
+
+    importados = 0
+    ignorados_duplicados = 0
+    erros = []
+
+    for i, row in enumerate(rows, start=2):
+        nome = row.get("nome", "").strip()
+        email = row.get("email_primario", "").strip() or row.get("email", "").strip()
+        senha = row.get("senha", "").strip()
+        papel_str = row.get("papel", "").strip().lower()
+
+        if not nome or not email:
+            erros.append(f"Linha {i}: O nome e o e-mail são obrigatórios.")
+            continue
+
+        if db.query(models.Usuario).filter(models.Usuario.email == email).first():
+            ignorados_duplicados += 1
+            continue
+
+        papel_atribuido = models.PapelUsuario.corretor
+        ger_id = None
+        
+        # Gerente forçosamente cadastra como corretor e se auto-atribui gerente
+        if current_user.papel == models.PapelUsuario.gerente:
+            papel_atribuido = models.PapelUsuario.corretor
+            ger_id = current_user.id
+        elif current_user.papel == models.PapelUsuario.admin:
+            if papel_str == "admin":
+                 papel_atribuido = models.PapelUsuario.admin
+            elif papel_str == "gerente":
+                 papel_atribuido = models.PapelUsuario.gerente
+            else:
+                 papel_atribuido = models.PapelUsuario.corretor
+
+        if not senha:
+             senha = "senha" + email.split("@")[0] # default provisória
+
+        try:
+            n_usr = models.Usuario(
+                nome=nome,
+                email=email,
+                senha_hash=auth.get_password_hash(senha),
+                papel=papel_atribuido,
+                gerente_id=ger_id
+            )
+            db.add(n_usr)
+            db.commit()
+            importados += 1
+        except Exception as e:
+            db.rollback()
+            erros.append(f"Linha {i} ({nome}): {str(e)}")
+
+    return {
+        "importados": importados,
+        "ignorados_duplicados": ignorados_duplicados,
+        "erros": erros,
+    }
+
 @app.patch("/usuarios/{usuario_id}/gerente", response_model=schemas.UsuarioResponse)
 def atualizar_gerente_usuario(usuario_id: str, update_data: schemas.UsuarioUpdateGerente, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     """
@@ -127,8 +242,13 @@ def receber_lead_webhook(lead_in: schemas.LeadCreateWebhook, db: Session = Depen
     if lead_existente:
         raise HTTPException(status_code=400, detail="Este e-mail já está cadastrado como lead.")
 
+    from sqlalchemy import func
+    max_num = db.query(func.max(models.Lead.numero_sequencial)).scalar() or 0
+    novo_numero = max_num + 1
+
     # 2. Converte os dados recebidos (Pydantic) para o formato do Banco (SQLAlchemy)
     novo_lead = models.Lead(
+        numero_sequencial=novo_numero,
         nome=lead_in.nome,
         email_primario=lead_in.email_primario,
         celular_primario=lead_in.celular_primario,
@@ -152,7 +272,12 @@ def criar_lead_manual(lead_in: schemas.LeadCreateWebhook, db: Session = Depends(
     if db.query(models.Lead).filter(models.Lead.email_primario == lead_in.email_primario).first():
         raise HTTPException(status_code=400, detail="Este e-mail já está cadastrado.")
 
+    from sqlalchemy import func
+    max_num = db.query(func.max(models.Lead.numero_sequencial)).scalar() or 0
+    novo_numero = max_num + 1
+
     novo_lead = models.Lead(
+        numero_sequencial=novo_numero,
         nome=lead_in.nome,
         email_primario=lead_in.email_primario,
         celular_primario=lead_in.celular_primario,
@@ -175,14 +300,207 @@ def criar_lead_manual(lead_in: schemas.LeadCreateWebhook, db: Session = Depends(
     db.refresh(novo_lead)
     return novo_lead
 
+@app.get("/contatos/", response_model=List[schemas.ContatoResponse])
+def get_contatos(
+    skip: int = 0, 
+    limit: int = 10000, 
+    db: Session = Depends(get_db), 
+    current_user: models.Usuario = Depends(get_current_user)
+):
+    """
+    Retorna todos os contatos do BD para relatórios
+    """
+    if current_user.papel == models.PapelUsuario.corretor:
+        return db.query(models.Contato).join(models.Lead).filter(models.Lead.corretor_id == current_user.id).offset(skip).limit(limit).all()
+    else:
+        return db.query(models.Contato).offset(skip).limit(limit).all()
+
+@app.post("/leads/importar-csv")
+async def importar_leads_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_user)
+):
+    """
+    Importa leads em massa a partir de um arquivo CSV.
+    Somente admins podem usar este endpoint.
+    Colunas esperadas (case-insensitive, qualquer separador , ou ;):
+      nome, email_primario, celular_primario, origem, interesse, genero
+    """
+    if current_user.papel != models.PapelUsuario.admin:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem importar leads.")
+
+    content = await file.read()
+    try:
+        text = content.decode("utf-8-sig")  # Handle BOM from Excel
+    except UnicodeDecodeError:
+        text = content.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(text), skipinitialspace=True)
+    # Normalize headers to lowercase stripped
+    if reader.fieldnames is None:
+        raise HTTPException(status_code=400, detail="CSV sem cabeçalho ou arquivo inválido.")
+
+    from sqlalchemy import func
+    importados = 0
+    ignorados = 0
+    erros = []
+
+    for i, row in enumerate(reader, start=2):  # start=2 because row 1 is header
+        # Normalize keys
+        row_norm = {k.strip().lower(): (v.strip() if v else '') for k, v in row.items()}
+        nome = row_norm.get('nome') or row_norm.get('name', '')
+        email = row_norm.get('email_primario') or row_norm.get('email', '')
+        celular = row_norm.get('celular_primario') or row_norm.get('celular') or row_norm.get('phone', '')
+        origem = row_norm.get('origem') or row_norm.get('source', '')
+        interesse = row_norm.get('interesse') or row_norm.get('interest', '')
+        genero = row_norm.get('genero') or row_norm.get('gender', '')
+
+        if not nome or not email or not celular:
+            erros.append(f"Linha {i}: nome, email e celular são obrigatórios.")
+            continue
+
+        # Skip duplicates by email
+        if db.query(models.Lead).filter(models.Lead.email_primario == email).first():
+            ignorados += 1
+            continue
+
+        try:
+            max_num = db.query(func.max(models.Lead.numero_sequencial)).scalar() or 0
+            novo_lead = models.Lead(
+                numero_sequencial=max_num + 1,
+                nome=nome,
+                email_primario=email,
+                celular_primario=celular,
+                origem=origem or None,
+                interesse=interesse or None,
+                genero=genero or None,
+                status=models.StatusLead.novo,
+            )
+            db.add(novo_lead)
+            db.commit()
+            db.refresh(novo_lead)
+            importados += 1
+        except Exception as e:
+            db.rollback()
+            erros.append(f"Linha {i}: {str(e)}")
+
+    return JSONResponse({
+        "importados": importados,
+        "ignorados_duplicados": ignorados,
+        "erros": erros,
+        "total_processado": importados + ignorados + len(erros),
+    })
+
+
+@app.post("/leads/importar-json")
+async def importar_leads_json(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_user)
+):
+    """
+    Importa leads a partir de dados já mapeados pelo frontend (wizard).
+    Busca corretor e empreendimento pelo nome.
+    Campos não encontrados são ignorados (não impedem a importação da linha).
+    Somente admins.
+    """
+    if current_user.papel != models.PapelUsuario.admin:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem importar leads.")
+
+    rows = payload.get("rows", [])
+    from sqlalchemy import func
+
+    importados = 0
+    ignorados_duplicados = 0
+    avisos_corretor: list[str] = []
+    avisos_empreendimento: list[str] = []
+    erros: list[str] = []
+
+    for i, row in enumerate(rows, start=1):
+        nome = (row.get("nome") or "").strip()
+        email = (row.get("email_primario") or "").strip()
+        celular = (row.get("celular_primario") or "").strip()
+
+        if not nome or not email or not celular:
+            erros.append(f"Linha {i}: nome, e-mail e celular são obrigatórios.")
+            continue
+
+        if db.query(models.Lead).filter(models.Lead.email_primario == email).first():
+            ignorados_duplicados += 1
+            continue
+
+        # Resolve corretor by name
+        corretor_id = None
+        corretor_nome = (row.get("corretor") or "").strip()
+        if corretor_nome:
+            corretor = db.query(models.Usuario).filter(
+                models.Usuario.nome.ilike(f"%{corretor_nome}%")
+            ).first()
+            if corretor:
+                corretor_id = corretor.id
+            else:
+                avisos_corretor.append(
+                    f'Linha {i} ({nome}): Corretor "{corretor_nome}" não encontrado. Campo ignorado.'
+                )
+
+        # Resolve empreendimento by name
+        empreendimento_id = None
+        emp_nome = (row.get("empreendimento") or "").strip()
+        if emp_nome:
+            emp = db.query(models.Empreendimento).filter(
+                models.Empreendimento.nome.ilike(f"%{emp_nome}%")
+            ).first()
+            if emp:
+                empreendimento_id = emp.id
+            else:
+                avisos_empreendimento.append(
+                    f'Linha {i} ({nome}): Empreendimento "{emp_nome}" não encontrado. Campo ignorado.'
+                )
+
+        try:
+            max_num = db.query(func.max(models.Lead.numero_sequencial)).scalar() or 0
+            novo_lead = models.Lead(
+                numero_sequencial=max_num + 1,
+                nome=nome,
+                email_primario=email,
+                celular_primario=celular,
+                origem=row.get("origem") or None,
+                interesse=row.get("interesse") or None,
+                genero=row.get("genero") or None,
+                corretor_id=corretor_id,
+                empreendimento_id=empreendimento_id,
+                status=models.StatusLead.novo,
+            )
+            db.add(novo_lead)
+            db.commit()
+            db.refresh(novo_lead)
+            importados += 1
+        except Exception as e:
+            db.rollback()
+            erros.append(f"Linha {i} ({nome}): {str(e)}")
+
+    return JSONResponse({
+        "importados": importados,
+        "ignorados_duplicados": ignorados_duplicados,
+        "avisos_corretor": avisos_corretor,
+        "avisos_empreendimento": avisos_empreendimento,
+        "erros": erros,
+    })
+
+
 @app.get("/leads/", response_model=list[schemas.LeadResponse])
 def listar_leads(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     """
     Retorna leads filtrados pela hierarquia de acessos.
     """
-    if current_user.papel == models.PapelUsuario.admin:
+    user_papel = current_user.papel.value if isinstance(current_user.papel, models.PapelUsuario) else current_user.papel
+    print(f"[DEBUG LISTAR LEADS] Email: {current_user.email} | Papel: {user_papel} | Type: {type(user_papel)}")
+
+    if user_papel == models.PapelUsuario.admin.value:
         leads = db.query(models.Lead).all()
-    elif current_user.papel == models.PapelUsuario.gerente:
+        print(f"[DEBUG LISTAR LEADS] ADMIN: Retornou {len(leads)} leads")
+    elif user_papel == models.PapelUsuario.gerente.value:
         subordinados = db.query(models.Usuario.id).filter(models.Usuario.gerente_id == current_user.id).all()
         ids_permitidos = [sub[0] for sub in subordinados] + [current_user.id]
         leads = db.query(models.Lead).filter(models.Lead.corretor_id.in_(ids_permitidos)).all()
@@ -274,6 +592,36 @@ def atualizar_lead(lead_id: str, lead_update: schemas.LeadUpdate, db: Session = 
     for key, value in update_data.items():
         setattr(lead_db, key, value)
 
+    db.commit()
+    db.refresh(lead_db)
+    return lead_db
+
+
+@app.patch("/leads/{lead_id}/empreendimento", response_model=schemas.LeadResponse)
+def atribuir_empreendimento(lead_id: str, body: schemas.AtribuirEmpreendimento, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    """
+    Atribui (ou remove) um empreendimento a um lead.
+    """
+    lead_db = db.query(models.Lead).filter(models.Lead.id == lead_id).first()
+    if not lead_db:
+        raise HTTPException(status_code=404, detail="Lead não encontrado.")
+    lead_db.empreendimento_id = body.empreendimento_id
+    db.commit()
+    db.refresh(lead_db)
+    return lead_db
+
+
+@app.patch("/leads/{lead_id}/corretor", response_model=schemas.LeadResponse)
+def atribuir_corretor(lead_id: str, body: schemas.AtribuirCorretor, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    """
+    Atribui um corretor a um lead.
+    """
+    if current_user.papel == models.PapelUsuario.corretor:
+        raise HTTPException(status_code=403, detail="Corretores não podem reatribuir leads.")
+    lead_db = db.query(models.Lead).filter(models.Lead.id == lead_id).first()
+    if not lead_db:
+        raise HTTPException(status_code=404, detail="Lead não encontrado.")
+    lead_db.corretor_id = body.corretor_id
     db.commit()
     db.refresh(lead_db)
     return lead_db
@@ -381,13 +729,51 @@ def criar_empreendimento(empreendimento_in: schemas.EmpreendimentoCreate, db: Se
         raise HTTPException(status_code=403, detail="Apenas administradores podem cadastrar novos empreendimentos.")
 
     novo_empreendimento = models.Empreendimento(
+        codigo=empreendimento_in.codigo,
         nome=empreendimento_in.nome,
-        descricao=empreendimento_in.descricao
+        descricao=empreendimento_in.descricao,
+        disponivel=empreendimento_in.disponivel
     )
+
     db.add(novo_empreendimento)
     db.commit()
     db.refresh(novo_empreendimento)
     return novo_empreendimento
+
+@app.put("/empreendimentos/{empreendimento_id}", response_model=schemas.EmpreendimentoResponse)
+def atualizar_empreendimento(
+    empreendimento_id: str, 
+    empreendimento_in: schemas.EmpreendimentoBase, 
+    db: Session = Depends(get_db), 
+    current_user: models.Usuario = Depends(get_current_user)
+):
+    """
+    Atualiza um empreendimento existente. Apenas Admin possui permissão.
+    """
+    if current_user.papel != models.PapelUsuario.admin:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem editar empreendimentos.")
+
+    empreendimento_db = db.query(models.Empreendimento).filter(models.Empreendimento.id == empreendimento_id).first()
+    if not empreendimento_db:
+        raise HTTPException(status_code=404, detail="Empreendimento não encontrado.")
+
+    # Check for unique constraints if they changed
+    if empreendimento_in.codigo != empreendimento_db.codigo:
+        if db.query(models.Empreendimento).filter(models.Empreendimento.codigo == empreendimento_in.codigo).first():
+            raise HTTPException(status_code=400, detail="Este código já está em uso.")
+            
+    if empreendimento_in.nome != empreendimento_db.nome:
+        if db.query(models.Empreendimento).filter(models.Empreendimento.nome == empreendimento_in.nome).first():
+            raise HTTPException(status_code=400, detail="Este nome já está em uso por outro empreendimento.")
+
+    empreendimento_db.codigo = empreendimento_in.codigo
+    empreendimento_db.nome = empreendimento_in.nome
+    empreendimento_db.descricao = empreendimento_in.descricao
+    empreendimento_db.disponivel = empreendimento_in.disponivel
+
+    db.commit()
+    db.refresh(empreendimento_db)
+    return empreendimento_db
 
 @app.get("/usuarios/", response_model=list[schemas.UsuarioResponse])
 def listar_usuarios(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
-import { Filter, SortDesc, MoreHorizontal } from "lucide-react";
+import { Plus, MoreHorizontal, MessageSquare, Phone, Mail, Building2, Filter, SortDesc } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import clsx from "clsx";
@@ -12,6 +12,9 @@ interface Lead {
   email_primario: string;
   status: string;
   valor?: number;
+  numero_sequencial?: number;
+  celular_primario?: string;
+  empreendimento_nome?: string;
   owner?: string;
   ownerAvatar?: string;
 }
@@ -146,24 +149,38 @@ export default function Kanban() {
                               )}
                               
                               <div className="flex justify-between items-start mb-2">
-                                <span className={clsx("text-[10px] font-bold tracking-wider uppercase", col.color)}>
-                                  {lead.empresa || 'Company'}
+                                <span className={clsx("text-xs font-bold tracking-wider", col.color)}>
+                                  #{String(lead.numero_sequencial || "0").padStart(7, '0')}
                                 </span>
                                 <button className="text-gray-300 hover:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <MoreHorizontal className="w-4 h-4" />
                                 </button>
                               </div>
                               
-                              <h4 className="font-bold text-gray-900 text-sm mb-4 leading-snug pr-4">
+                              <h4 className="font-bold text-gray-900 text-sm mb-3 leading-snug pr-4 line-clamp-2">
                                 {lead.nome}
                               </h4>
+
+                              <div className="space-y-1 mb-4">
+                                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                  <Mail className="w-3.5 h-3.5 shrink-0" />
+                                  <span className="truncate">{lead.email_primario || '---'}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                  <Phone className="w-3.5 h-3.5 shrink-0" />
+                                  <span className="truncate">{lead.celular_primario || '---'}</span>
+                                </div>
+                                {lead.empreendimento_nome && (
+                                  <div className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded w-fit mt-1.5">
+                                    <Building2 className="w-3 h-3 shrink-0" />
+                                    <span className="truncate">{lead.empreendimento_nome}</span>
+                                  </div>
+                                )}
+                              </div>
                               
-                              <div className="flex justify-between items-center mt-auto">
-                                <span className="font-bold text-gray-700 text-sm">
-                                  ${(lead.valor || 0).toLocaleString()}
-                                </span>
-                                <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden border border-white shrink-0">
-                                  <img src={lead.ownerAvatar || 'https://i.pravatar.cc/150?u=default'} alt="" className="w-full h-full object-cover" />
+                              <div className="flex justify-end items-center mt-auto">
+                                <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center border border-white shrink-0 uppercase">
+                                  {lead.nome.substring(0,2)}
                                 </div>
                               </div>
                             </div>

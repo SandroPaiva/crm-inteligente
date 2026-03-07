@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import PhoneInput from "./PhoneInput";
 
 export default function LeadForm() {
   const navigate = useNavigate(); // Ferramenta para redirecionar o usuário após salvar
@@ -93,13 +94,12 @@ export default function LeadForm() {
           <label className="block text-sm font-medium text-gray-700">
             Celular / WhatsApp *
           </label>
-          <input
-            type="text"
+          <PhoneInput
             required
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
             value={formData.celular_primario}
-            onChange={(e) =>
-              setFormData({ ...formData, celular_primario: e.target.value })
+            onChange={(val) =>
+              setFormData({ ...formData, celular_primario: val })
             }
           />
         </div>

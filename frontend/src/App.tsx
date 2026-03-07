@@ -18,6 +18,12 @@ const PrivateRoute = () => {
   return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
+const AdminRoute = () => {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center"><p className="text-white">Carregando...</p></div>;
+  return user?.papel === 'admin' ? <Outlet /> : <Navigate to="/" replace />;
+};
+
 function App() {
   return (
     <AuthProvider>
@@ -29,15 +35,19 @@ function App() {
           <Route element={<PrivateRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<Dashboard />} />
-          <Route path="/dashboard" element={<Navigate to="/" replace />} />
-              <Route path="/leads" element={<ContactsList />} />
+              <Route path="/dashboard" element={<Navigate to="/" replace />} />
               <Route path="/negocios" element={<Kanban />} />
               <Route path="/relatorios" element={<Analytics />} />
               <Route path="/leads/:id" element={<LeadDetails />} />
-              <Route path="/novo-lead" element={<LeadForm />} />
               <Route path="/tarefas" element={<Tarefas />} />
               <Route path="/equipe" element={<Equipe />} />
               <Route path="/empreendimentos" element={<Empreendimentos />} />
+
+              {/* Rotas exclusivas para Admin */}
+              <Route element={<AdminRoute />}>
+                <Route path="/leads" element={<ContactsList />} />
+                <Route path="/novo-lead" element={<LeadForm />} />
+              </Route>
             </Route>
           </Route>
         </Routes>
